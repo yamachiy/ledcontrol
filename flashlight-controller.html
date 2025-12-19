@@ -3,86 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> (Firebase)</title>
+    <title>スマホライト一斉制御</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        /*  */
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 20px; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        h1 { text-align: center; color: #333; margin-bottom: 10px; font-size: 28px; }
-        .subtitle { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
-        .mode-selector { display: flex; gap: 10px; margin-bottom: 30px; }
-        .mode-btn { flex: 1; padding: 15px; border: 2px solid #667eea; background: white; color: #667eea; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; }
+        body { font-family: sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; color: #333; }
+        .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        h1 { text-align: center; font-size: 24px; margin-bottom: 20px; }
+        .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
+        .mode-btn { flex: 1; padding: 12px; border: 2px solid #667eea; background: white; border-radius: 10px; cursor: pointer; font-weight: bold; }
         .mode-btn.active { background: #667eea; color: white; }
-        .controller-section, .client-section { display: none; }
-        .controller-section.active, .client-section.active { display: block; }
-        .qr-container { text-align: center; margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 15px; }
-        #qrcode { display: inline-block; padding: 20px; background: white; border-radius: 10px; }
-        .control-panel { margin-top: 30px; }
-        .control-group { margin-bottom: 25px; }
-        .control-label { font-weight: bold; color: #333; margin-bottom: 10px; display: block; }
-        .button-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .control-btn { padding: 20px; border: none; border-radius: 12px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s; color: white; }
-        .btn-on { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-        .btn-off { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-        .btn-blink { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
-        .btn-random { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-        .btn-sos { background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%); }
-        .btn-wave { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
-        .slider { width: 100%; height: 8px; border-radius: 5px; background: #ddd; -webkit-appearance: none; }
-        .stats { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 10px; margin-top: 20px; }
-        .stats-number { font-size: 48px; font-weight: bold; color: #667eea; }
-        .flashlight-display { width: 100%; height: 300px; display: flex; align-items: center; justify-content: center; border-radius: 15px; margin: 30px 0; transition: all 0.3s; }
-        .flashlight-display.off { background: #2c3e50; }
-        .flashlight-display.on { background: #f1c40f; box-shadow: 0 0 100px rgba(241, 196, 15, 0.8); }
-        .flashlight-icon { font-size: 120px; }
-        .permission-btn { width: 100%; padding: 20px; background: #667eea; color: white; border: none; border-radius: 12px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 20px; }
-        .error-message { background: #ffebee; color: #c62828; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
-        .success-message { background: #e8f5e9; color: #2e7d32; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; }
+        .section { display: none; }
+        .section.active { display: block; }
+        .qr-area { text-align: center; background: #f0f0f0; padding: 15px; border-radius: 15px; margin-bottom: 20px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .ctrl-btn { padding: 15px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; }
+        .btn-on { background: #f093fb; } .btn-off { background: #4facfe; } .btn-blink { background: #43e97b; } .btn-sos { background: #ff9a56; }
+        .stats { text-align: center; font-size: 32px; font-weight: bold; color: #667eea; margin: 15px 0; }
+        .flashlight-display { width: 100%; height: 150px; border-radius: 15px; margin: 20px 0; display: flex; align-items: center; justify-content: center; font-size: 50px; }
+        .off { background: #333; } .on { background: #f1c40f; box-shadow: 0 0 50px #f1c40f; }
+        .perm-btn { width: 100%; padding: 20px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1> </h1>
-        <p class="subtitle"></p>
-
+        <h1>スマホライト制御</h1>
         <div class="mode-selector">
-            <button class="mode-btn active" onclick="switchMode('controller')"></button>
-            <button class="mode-btn" onclick="switchMode('client')"></button>
+            <button class="mode-btn active" onclick="setMode('controller')">操作側</button>
+            <button class="mode-btn" onclick="setMode('client')">参加側</button>
         </div>
 
-        <div class="controller-section active">
-            <div class="qr-container"><div id="qrcode"></div><p> QR</p></div>
-            <div class="stats"><div class="stats-number" id="deviceCount">0</div><div></div></div>
-            <div class="control-panel">
-                <div class="button-group">
-                    <button class="control-btn btn-on" onclick="sendFirebaseCmd('on')"> </button>
-                    <button class="control-btn btn-off" onclick="sendFirebaseCmd('off')"> </button>
-                    <button class="control-btn btn-blink" onclick="sendFirebaseCmd('blink')"> </button>
-                    <button class="control-btn btn-sos" onclick="sendFirebaseCmd('sos')"> SOS</button>
-                    <button class="control-btn btn-random" onclick="sendFirebaseCmd('random')"> </button>
-                    <button class="control-btn btn-wave" onclick="sendFirebaseCmd('wave')"> </button>
-                </div>
-                <div class="control-group" style="margin-top:20px;">
-                    <label class="control-label">: <span id="speedValue">500ms</span></label>
-                    <input type="range" min="100" max="2000" value="500" class="slider" id="speedSlider">
-                </div>
+        <div id="controller" class="section active">
+            <div class="qr-area"><div id="qrcode" style="display:inline-block;"></div><p>他のスマホで読み取って参加</p></div>
+            <div class="stats" id="count">0</div>
+            <div class="btn-grid">
+                <button class="ctrl-btn btn-on" onclick="sendCmd('on')">点灯</button>
+                <button class="ctrl-btn btn-off" onclick="sendCmd('off')">消灯</button>
+                <button class="ctrl-btn btn-blink" onclick="sendCmd('blink')">点滅</button>
+                <button class="ctrl-btn btn-sos" onclick="sendCmd('sos')">SOS</button>
             </div>
         </div>
 
-        <div class="client-section">
-            <button class="permission-btn" id="permissionBtn" onclick="requestFlashlightPermission()"> </button>
-            <div id="statusMessage" style="display:none;"></div>
-            <div class="flashlight-display off" id="flashDisplay"><div class="flashlight-icon"></div></div>
-            <div id="statusText" style="text-align:center; font-weight:bold; font-size:24px;"></div>
+        <div id="client" class="section">
+            <button class="perm-btn" id="permBtn" onclick="initFlash()">ライトを許可する</button>
+            <div id="display" class="flashlight-display off">💡</div>
+            <p id="status" style="text-align:center; font-weight:bold;">待機中...</p>
         </div>
     </div>
 
     <script>
-        // --- Firebase () ---
+        // Firebase設定
         const firebaseConfig = {
             apiKey: "AIzaSyAELE9kEfoeShstaPaXYBBQJgiS49pWB0o",
             authDomain: "ledcontroller-b2655.firebaseapp.com",
@@ -90,131 +62,84 @@
             projectId: "ledcontroller-b2655",
             storageBucket: "ledcontroller-b2655.firebasestorage.app",
             messagingSenderId: "885689645868",
-            appId: "1:885689645868:web:d05c56f76061c09fa70a89",
-            measurementId: "G-LHTZY9GXX7"
+            appId: "1:885689645868:web:d05c56f76061c09fa70a89"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
+        const sessionId = "room1"; // 固定セッション
+        const clientId = "dev_" + Math.random().toString(36).substr(2, 4);
 
-        // ---  ---
-        let mode = 'controller';
-        let sessionId = new URLSearchParams(window.location.search).get('s') || 'room1';
-        let clientId = 'dev_' + Math.random().toString(36).substr(2, 4);
         let track = null;
-        let blinkInterval = null;
-        let blinkSpeed = 500;
+        let timer = null;
 
-        function switchMode(newMode) {
-            mode = newMode;
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            if(mode === 'controller') {
-                document.querySelector('.controller-section').classList.add('active');
-                document.querySelector('.client-section').classList.remove('active');
+        function setMode(m) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(m).classList.add('active');
+            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+            if(m === 'controller') {
                 document.querySelectorAll('.mode-btn')[0].classList.add('active');
-                initController();
+                showQR();
             } else {
-                document.querySelector('.controller-section').classList.remove('active');
-                document.querySelector('.client-section').classList.add('active');
                 document.querySelectorAll('.mode-btn')[1].classList.add('active');
-                initClient();
+                startClient();
             }
         }
 
-        // ---  ---
-        function initController() {
-            const url = window.location.origin + window.location.pathname + '?s=' + sessionId + '&m=c';
-            document.getElementById('qrcode').innerHTML = '';
-            new QRCode(document.getElementById('qrcode'), { text: url, width: 180, height: 180 });
-
-            // 
-            db.ref(`sessions/${sessionId}/clients`).on('value', snap => {
-                const clients = snap.val();
-                document.getElementById('deviceCount').innerText = clients ? Object.keys(clients).length : 0;
-            });
-
-            document.getElementById('speedSlider').oninput = (e) => {
-                blinkSpeed = parseInt(e.target.value);
-                document.getElementById('speedValue').innerText = blinkSpeed + 'ms';
-            };
-        }
-
-        function sendFirebaseCmd(cmd) {
-            db.ref(`sessions/${sessionId}/command`).set({
-                type: cmd,
-                speed: blinkSpeed,
-                time: Date.now()
+        function showQR() {
+            const url = window.location.origin + window.location.pathname + "?m=c";
+            document.getElementById('qrcode').innerHTML = "";
+            new QRCode(document.getElementById('qrcode'), { text: url, width: 150, height: 150 });
+            db.ref(`sessions/${sessionId}/clients`).on('value', s => {
+                document.getElementById('count').innerText = s.val() ? Object.keys(s.val()).length : 0;
             });
         }
 
-        // ---  ---
-        function initClient() {
-            // 
-            const myRef = db.ref(`sessions/${sessionId}/clients/${clientId}`);
-            myRef.set(true);
-            myRef.onDisconnect().remove();
-
-            //  (Firebase)
-            db.ref(`sessions/${sessionId}/command`).on('value', snap => {
-                const data = snap.val();
-                if (data && track) executeCommand(data.type, data.speed);
-            });
+        function sendCmd(type) {
+            db.ref(`sessions/${sessionId}/cmd`).set({ type: type, ts: Date.now() });
         }
 
-        async function requestFlashlightPermission() {
+        async function initFlash() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                track = stream.getVideoTracks()[0];
-                document.getElementById('permissionBtn').style.display = 'none';
-                showMessage('...', 'success');
-            } catch (e) { alert("HTTPS"); }
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                track = s.getVideoTracks()[0];
+                document.getElementById('permBtn').style.display = 'none';
+                document.getElementById('status').innerText = "接続済み：命令を待っています";
+            } catch (e) { alert("カメラ許可が必要です"); }
         }
 
-        async function executeCommand(command, speed) {
-            if (blinkInterval) { clearInterval(blinkInterval); clearTimeout(blinkInterval); }
-            
-            switch(command) {
-                case 'on': setFlash(true); break;
-                case 'off': setFlash(false); break;
-                case 'blink': startBlink(speed); break;
-                case 'random': startBlink(Math.random() * 500 + 50); break;
-                case 'sos': startSOS(); break;
-                case 'wave': 
-                    const delay = (parseInt(clientId, 36) % 10) * 150;
-                    setTimeout(() => startBlink(400), delay);
-                    break;
+        function startClient() {
+            const ref = db.ref(`sessions/${sessionId}/clients/${clientId}`);
+            ref.set(true); ref.onDisconnect().remove();
+            db.ref(`sessions/${sessionId}/cmd`).on('value', s => {
+                const data = s.val();
+                if(data && track) exec(data.type);
+            });
+        }
+
+        function exec(cmd) {
+            if(timer) { clearInterval(timer); clearTimeout(timer); }
+            if(cmd === 'on') setL(true);
+            else if(cmd === 'off') setL(false);
+            else if(cmd === 'blink') { let i=0; timer = setInterval(() => { i++; setL(i%2===0); }, 300); }
+            else if(cmd === 'sos') {
+                const p = [100,100,100,100,100,300, 300,100,300,100,300,300, 100,100,100,100,100,800];
+                let i = 0;
+                const f = () => { setL(i%2===0); timer = setTimeout(f, p[i++ % p.length]); };
+                f();
             }
         }
 
-        async function setFlash(state) {
+        async function setL(v) {
             try {
-                await track.applyConstraints({ advanced: [{ torch: state }] });
-                document.getElementById('flashDisplay').className = state ? 'flashlight-display on' : 'flashlight-display off';
-                document.getElementById('statusText').innerText = state ? '' : '';
+                await track.applyConstraints({ advanced: [{ torch: v }] });
+                document.getElementById('display').className = v ? "flashlight-display on" : "flashlight-display off";
             } catch (e) {}
         }
 
-        function startBlink(ms) {
-            let s = false;
-            blinkInterval = setInterval(() => { s = !s; setFlash(s); }, ms);
-        }
-
-        function startSOS() {
-            const p = [100,100,100,100,100,300, 300,100,300,100,300,300, 100,100,100,100,100,1000];
-            let i = 0;
-            const run = () => { setFlash(i % 2 === 0); blinkInterval = setTimeout(run, p[i++ % p.length]); };
-            run();
-        }
-
-        function showMessage(msg, type) {
-            const el = document.getElementById('statusMessage');
-            el.innerText = msg; el.className = type === 'error' ? 'error-message' : 'success-message';
-            el.style.display = 'block';
-        }
-
         window.onload = () => {
-            if (new URLSearchParams(window.location.search).get('m') === 'c') switchMode('client');
-            else initController();
+            const p = new URLSearchParams(window.location.search);
+            if(p.get('m') === 'c') setMode('client');
+            else showQR();
         };
     </script>
 </body>
