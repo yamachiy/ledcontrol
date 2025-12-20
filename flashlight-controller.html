@@ -11,43 +11,39 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: sans-serif; background: #1a1a2e; min-height: 100vh; padding: 20px; color: white; }
         .container { max-width: 500px; margin: 0 auto; background: #16213e; border-radius: 20px; padding: 20px; }
-        .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
-        .mode-btn { flex: 1; padding: 12px; border: 2px solid #4facfe; background: transparent; color: #4facfe; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .mode-btn.active { background: #4facfe; color: white; }
+        .mode-btn { flex: 1; padding: 12px; border: 2px solid #4facfe; background: transparent; color: #4facfe; border-radius: 10px; cursor: pointer; font-weight: bold; margin-bottom: 20px; width: 100%; }
         .section { display: none; }
         .section.active { display: block; }
         .qr-area { text-align: center; background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; }
         .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .ctrl-btn { padding: 20px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; }
+        .ctrl-btn { padding: 20px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; font-size: 18px; }
         .btn-on { background: #e94560; } .btn-off { background: #0f3460; border: 1px solid #4facfe; } 
-        .stats { text-align: center; font-size: 40px; font-weight: bold; color: #4facfe; margin: 10px 0; }
         .flashlight-display { width: 100%; height: 180px; border-radius: 15px; margin: 20px 0; display: flex; align-items: center; justify-content: center; font-size: 60px; }
         .off { background: #333; } .on { background: #f1c40f; box-shadow: 0 0 80px #f1c40f; }
         .perm-btn { width: 100%; padding: 25px; background: #e94560; color: white; border: none; border-radius: 15px; font-size: 20px; font-weight: bold; cursor: pointer; }
-        #log { font-size: 11px; color: #ffeb3b; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 5px; margin-top: 10px; word-break: break-all; }
-        video { width: 1px; height: 1px; opacity: 0; }
+        #log { font-size: 12px; color: #ffeb3b; background: rgba(0,0,0,0.4); padding: 10px; border-radius: 5px; margin-top: 10px; min-height: 60px; }
+        video { position: fixed; top: -100px; width: 1px; height: 1px; opacity: 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="mode-selector">
-            <button class="mode-btn active" id="btn-ctrl" onclick="setMode('controller')">操作側</button>
-            <button class="mode-btn" id="btn-client" onclick="setMode('client')">参加側</button>
+        <div id="mode-ui">
+            <button class="mode-btn" id="btn-toggle" onclick="toggleMode()">操作側/参加側 切り替え</button>
         </div>
 
-        <div id="controller" class="section active">
+        <div id="controller" class="section">
             <div class="qr-area"><div id="qrcode" style="display:inline-block;"></div></div>
-            <div class="stats" id="count">0</div>
+            <div id="count" style="text-align:center; font-size:30px; margin:10px;">0</div>
             <div class="btn-grid">
-                <button class="ctrl-btn btn-on" onclick="sendCmd('on')">ON</button>
-                <button class="ctrl-btn btn-off" onclick="sendCmd('off')">OFF</button>
+                <button class="ctrl-btn btn-on" onclick="sendCmd('on')">点灯</button>
+                <button class="ctrl-btn btn-off" onclick="sendCmd('off')">消灯</button>
             </div>
         </div>
 
         <div id="client" class="section">
-            <button class="perm-btn" id="permBtn" onclick="initFlash()">【ここをタップして開始】</button>
+            <button class="perm-btn" id="permBtn" onclick="initFlash()">【開始】ライトを有効化</button>
             <div id="display" class="flashlight-display off">💡</div>
-            <div id="log">準備中...</div>
+            <div id="log">ここに状態が表示されます</div>
             <video id="v" autoplay playsinline></video>
         </div>
     </div>
@@ -69,17 +65,21 @@
 
         let track = null;
 
+        function toggleMode() {
+            const isClient = document.getElementById('client').classList.contains('active');
+            setMode(isClient ? 'controller' : 'client');
+        }
+
         function setMode(m) {
-            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-            document.getElementById(m).classList.add('active');
+            document.getElementById('controller').classList.toggle('active', m === 'controller');
+            document.getElementById('client').classList.toggle('active', m === 'client');
             if(m === 'controller') showQR();
         }
 
         function showQR() {
             const qrTarget = document.getElementById('qrcode');
             qrTarget.innerHTML = "";
-            const url = "https://yamachiy.github.io/ledcontrol/flashlight-controller.html?m=c";
-            new QRCode(qrTarget, { text: url, width: 160, height: 160 });
+            new QRCode(qrTarget, { text: window.location.href.split('?')[0] + "?m=c", width: 160, height: 160 });
             db.ref(`sessions/${sessionId}/clients`).on('value', s => {
                 document.getElementById('count').innerText = s.val() ? Object.keys(s.val()).length : 0;
             });
@@ -91,23 +91,43 @@
 
         async function initFlash() {
             const logElement = document.getElementById('log');
-            logElement.innerText = "カメラ起動中...";
+            logElement.innerText = "ライト付きカメラを探索中...";
+            
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-                const video = document.getElementById('v');
-                video.srcObject = stream;
-                track = stream.getVideoTracks()[0];
+                // すべてのカメラデバイスを取得
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(d => d.kind === 'videoinput');
+                
+                let foundTrack = null;
 
-                // Android用：デバイスがライト対応しているか確認
-                const capabilities = track.getCapabilities();
-                if (!capabilities.torch) {
-                    logElement.innerText = "この端末はブラウザからのライト操作に対応していません";
-                    return;
+                // 背面カメラを順番に試してライトがあるか探す
+                for (const device of videoDevices) {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { deviceId: { exact: device.deviceId } } 
+                        });
+                        const t = stream.getVideoTracks()[0];
+                        const caps = t.getCapabilities();
+                        
+                        if (caps.torch) {
+                            foundTrack = t;
+                            document.getElementById('v').srcObject = stream;
+                            break; 
+                        } else {
+                            // ライトがなければ停止して次へ
+                            t.stop();
+                        }
+                    } catch (e) { continue; }
                 }
 
-                // Firebase監視
+                if (!foundTrack) {
+                    logElement.innerText = "エラー: ライト付きのカメラが見つかりません。標準設定で再試行します。";
+                    // 予備：標準設定で試す
+                    const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    foundTrack = s.getVideoTracks()[0];
+                }
+
+                track = foundTrack;
                 db.ref(`sessions/${sessionId}/clients/${clientId}`).set(true).then(() => {
                     db.ref(`sessions/${sessionId}/cmd`).on('value', snap => {
                         const data = snap.val();
@@ -116,7 +136,7 @@
                 });
 
                 document.getElementById('permBtn').style.display = 'none';
-                logElement.innerText = "接続成功！ライト準備完了";
+                logElement.innerText = "ライトを認識しました！準備完了です。";
 
             } catch (e) {
                 logElement.innerText = "エラー: " + e.message;
@@ -125,24 +145,17 @@
 
         async function setL(v) {
             if(!track) return;
-            const logElement = document.getElementById('log');
             document.getElementById('display').className = v ? "flashlight-display on" : "flashlight-display off";
-            
             try {
-                // Android Chromeで最も成功率の高い書き方
-                await track.applyConstraints({
-                    advanced: [{ torch: v }]
-                });
-                logElement.innerText = "命令実行中: " + (v ? "点灯" : "消灯");
+                await track.applyConstraints({ advanced: [{ torch: v }] });
             } catch (e) {
-                logElement.innerText = "ライト操作エラー: " + e.message;
+                document.getElementById('log').innerText = "点灯失敗: " + e.message;
             }
         }
 
         window.onload = () => {
             const p = new URLSearchParams(window.location.search);
-            if(p.get('m') === 'c') setMode('client');
-            else showQR();
+            setMode(p.get('m') === 'c' ? 'client' : 'controller');
         };
     </script>
 </body>
