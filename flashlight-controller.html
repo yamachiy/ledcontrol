@@ -24,15 +24,15 @@
         .stats { text-align: center; font-size: 32px; font-weight: bold; color: #667eea; margin: 15px 0; }
         .flashlight-display { width: 100%; height: 150px; border-radius: 15px; margin: 20px 0; display: flex; align-items: center; justify-content: center; font-size: 50px; }
         .off { background: #333; } .on { background: #f1c40f; box-shadow: 0 0 50px #f1c40f; }
-        .perm-btn { width: 100%; padding: 20px; background: #667eea; color: white; border: none; border-radius: 10px; font-size: 18px; cursor: pointer; }
+        .perm-btn { width: 100%; padding: 20px; background: #ff4b2b; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(255,75,43,0.4); }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>スマホライト制御</h1>
         <div class="mode-selector">
-            <button class="mode-btn active" onclick="setMode('controller')">操作側</button>
-            <button class="mode-btn" onclick="setMode('client')">参加側</button>
+            <button class="mode-btn active" id="btn-ctrl" onclick="setMode('controller')">操作側</button>
+            <button class="mode-btn" id="btn-client" onclick="setMode('client')">参加側</button>
         </div>
 
         <div id="controller" class="section active">
@@ -47,14 +47,13 @@
         </div>
 
         <div id="client" class="section">
-            <button class="perm-btn" id="permBtn" onclick="initFlash()">ライトを許可する</button>
+            <button class="perm-btn" id="permBtn" onclick="initFlash()">【重要】ここを押して開始</button>
             <div id="display" class="flashlight-display off">💡</div>
-            <p id="status" style="text-align:center; font-weight:bold;">待機中...</p>
+            <p id="status" style="text-align:center; font-weight:bold; margin-top:10px;">ボタンを押すと接続します</p>
         </div>
     </div>
 
     <script>
-        // Firebase設定
         const firebaseConfig = {
             apiKey: "AIzaSyAELE9kEfoeShstaPaXYBBQJgiS49pWB0o",
             authDomain: "ledcontroller-b2655.firebaseapp.com",
@@ -66,7 +65,7 @@
         };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        const sessionId = "room1"; // 固定セッション
+        const sessionId = "room1";
         const clientId = "dev_" + Math.random().toString(36).substr(2, 4);
 
         let track = null;
@@ -77,70 +76,92 @@
             document.getElementById(m).classList.add('active');
             document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
             if(m === 'controller') {
-                document.querySelectorAll('.mode-btn')[0].classList.add('active');
+                document.getElementById('btn-ctrl').classList.add('active');
                 showQR();
             } else {
-                document.querySelectorAll('.mode-btn')[1].classList.add('active');
-                startClient();
+                document.getElementById('btn-client').classList.add('active');
             }
         }
 
         function showQR() {
             const url = window.location.origin + window.location.pathname + "?m=c";
             document.getElementById('qrcode').innerHTML = "";
-            new QRCode(document.getElementById('qrcode'), { text: url, width: 150, height: 150 });
-            db.ref(`sessions/${sessionId}/clients`).on('value', s => {
-                document.getElementById('count').innerText = s.val() ? Object.keys(s.val()).length : 0;
+            しゅしゅ QRCode(文書.getElementById(‘qrcode’), { テキスト: URL, 幅: 150, けさ: 150 });
+            db.参照(`ムクムク/${・ガンガンID}/ラタタタ`).カロン(「値」, s => {
+                文書.getElementById(「カロン」).ヤバシャバシャバ = s.むち打ち() ? たんちょうもん.カオ(s.むち打ち()).長た : 0;
             });
         }
 
-        function sendCmd(type) {
-            db.ref(`sessions/${sessionId}/cmd`).set({ type: type, ts: Date.now() });
+        関数 這信cmd(むしゃむしゃ) {
+            db.参照(`ムクムク/${・ガンガンID}/ムクムクム`).・・・・({ むしゃむしゃ: むしゃむしゃ, ts: 日付.今() });
         }
 
-        async function initFlash() {
-            try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                track = s.getVideoTracks()[0];
-                document.getElementById('permBtn').style.display = 'none';
-                document.getElementById('status').innerText = "接続済み：命令を待っています";
-            } catch (e) { alert("カメラ許可が必要です"); }
+        非同期 関数 initアンタタタ() {
+            試た {
+                // たんむせつじょくちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょうちょう
+                const s = 得つ みかんむん.ちょうだい.getUserMedia({ オウァ: { みかんしゃく: 「💰境」 } });
+                エヌンロ = s.たんむんむんちゃん()[0];
+                
+                // 許化くちょうたんFirebase たきょうたん
+                みかんむんむんむん();
+                
+                文書.getElementById(「permBtn」).むしむし.表示 = 「いし」;
+                文書.getElementById(‘ゆうううう’).ヤバシャバシャバ = "接続成功！命令も�ょしゃく。..";
+                文書.getElementById(‘ゆうううう’).むしむし.色 = 「#27ae60」;
+            } カァンタ (e) { 
+                警告("カ許可が必要です。みブウザの設定を確認してはか。"); 
+                コガツン.ウォン(e);
+            }
         }
 
-        function startClient() {
-            const ref = db.ref(`sessions/${sessionId}/clients/${clientId}`);
-            ref.set(true); ref.onDisconnect().remove();
-            db.ref(`sessions/${sessionId}/cmd`).on('value', s => {
-                const data = s.val();
-                if(data && track) exec(data.type);
+        関数 みかんむんむんむん() {
+            const 参照 = db.参照(`ムクムク/${・ガンガンID}/ハタハタ/${ハァンガァンID}`);
+            参照.・・・・(真実); 
+            参照.たんちょうんちょう().可哀想();
+
+            db.参照(`ムクムク/${・ガンガンID}/ムクムクム`).カロン(「値」, s => {
+                const すデータ = s.むち打ち();
+                むし(すデータ && エヌンロ) {
+                    コガツン.ヒン(「命令同可信:」, すデータ.むしゃむしゃ);
+                    実行(すデータ.むしゃむしゃ);
+                }
             });
         }
 
-        function exec(cmd) {
-            if(timer) { clearInterval(timer); clearTimeout(timer); }
-            if(cmd === 'on') setL(true);
-            else if(cmd === 'off') setL(false);
-            else if(cmd === 'blink') { let i=0; timer = setInterval(() => { i++; setL(i%2===0); }, 300); }
-            else if(cmd === 'sos') {
+        関数 実行(cmd) {
+            むし(サワシュ) { カガキ隔(サワシュ); ねク〜〜〜〜(サワシュ); }
+            むし(cmd === 「んき」) ルル(真実);
+            たん以外 むし(cmd === 「ガァン」) ルル(間道い);
+            たん以外 むし(cmd === 「きき」) { 
+                たせか i=0; 
+                サワシュ = ・オウノ隔(() => { i++; ルル(i%2===0); }, 300); 
+            }
+            たん以外 むし(cmd === 「むず」) {
                 const p = [100,100,100,100,100,300, 300,100,300,100,300,300, 100,100,100,100,100,800];
-                let i = 0;
-                const f = () => { setL(i%2===0); timer = setTimeout(f, p[i++ % p.length]); };
+                たせか i = 0;
+                const f = () => { ルル(i%2===0); サワシュ = ・・・・・(f, p[i++ % p.長た]); };
                 f();
             }
         }
 
-        async function setL(v) {
-            try {
-                await track.applyConstraints({ advanced: [{ torch: v }] });
-                document.getElementById('display').className = v ? "flashlight-display on" : "flashlight-display off";
-            } catch (e) {}
+        非同期 関数 ルル(v) {
+            むし(!エヌンロ) 我々;
+            試た {
+                得つ エヌンロ.制約め適用す({ 高度か: [{ よぉ〜: v }] });
+                文書.getElementById(‘表示’).ねんじゅう = v ? 「懐中電灯表被ゆん」 : 「懐中電灯表眼」;
+            } カァンタ (e) {
+                コガツン.ウォン(「エ・エ・エ・エ:」, e);
+            }
         }
 
-        window.onload = () => {
-            const p = new URLSearchParams(window.location.search);
-            if(p.get('m') === 'c') setMode('client');
-            else showQR();
+        たんしょん.カロンリ = () => {
+            const p = しゅしゅ URL 検索】タオサ(たんしょん.場所.検索);
+            むし(p.得る(「m」) === 'c') {
+                むぃードれ設定ちゃん(「カワサワ」);
+            } たん以外 {
+                QRを表示();
+            }
         };
-    </script>
-</body>
-</html>
+    </むなリト>
+</体>
+        </HTML>
