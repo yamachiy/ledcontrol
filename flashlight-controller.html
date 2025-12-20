@@ -3,75 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ライト一斉制御システム</title>
+    <title>ライト制御システム</title>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        :root { --primary: #4facfe; --accent: #e94560; --bg: #1a1a2e; }
+        :root { --primary: #4facfe; --accent: #e94560; --bg: #0f172a; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: sans-serif; background: var(--bg); color: white; min-height: 100vh; padding: 15px; }
-        .container { max-width: 500px; margin: 0 auto; background: #16213e; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .container { max-width: 500px; margin: 0 auto; background: #1e293b; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         h1 { text-align: center; font-size: 18px; margin-bottom: 15px; color: var(--primary); }
-        
-        /* パスワード画面 */
-        #pw-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 100; }
-        .pw-box { text-align: center; }
-        input { padding: 10px; font-size: 20px; width: 150px; text-align: center; border-radius: 5px; border: none; margin-bottom: 10px; }
-        
-        /* セクション切り替え */
         .section { display: none; }
         .section.active { display: block; }
-
-        /* 操作パネル */
         .qr-area { text-align: center; background: white; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
         .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .ctrl-btn { padding: 15px 5px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; }
-        .on { background: #ff416c; } .off { background: #4b6cb7; } .ptn { background: #24c6dc; color: #000; }
-        
-        /* クライアント側 */
-        .perm-btn { width: 100%; padding: 25px; background: var(--accent); color: white; border: none; border-radius: 15px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 15px; }
+        .ctrl-btn { padding: 15px 5px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .ctrl-btn:active { transform: scale(0.95); opacity: 0.8; }
+        .on { background: #ff416c; } .off { background: #4b6cb7; } .ptn { background: #00b894; }
+        .perm-btn { width: 100%; padding: 25px; background: var(--accent); color: white; border: none; border-radius: 15px; font-size: 18px; font-weight: bold; cursor: pointer; margin-bottom: 15px; box-shadow: 0 0 20px rgba(233,69,96,0.5); }
         .light-display { width: 100%; height: 150px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 60px; margin: 15px 0; }
-        .l-off { background: #333; } .l-on { background: #f1c40f; box-shadow: 0 0 50px #f1c40f; }
-        #log { font-size: 10px; color: #888; background: rgba(0,0,0,0.3); padding: 5px; height: 60px; overflow-y: auto; }
-        video { position: fixed; top: -100px; width: 1px; height: 1px; opacity: 0; }
+        .l-off { background: #334155; } .l-on { background: #f1c40f; box-shadow: 0 0 50px #f1c40f; }
+        #log { font-size: 11px; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; height: 80px; overflow-y: auto; font-family: monospace; }
+        video { position: fixed; bottom: 10px; right: 10px; width: 60px; height: 45px; border: 1px solid #444; border-radius: 5px; z-index: 100; background: #000; }
     </style>
 </head>
 <body>
 
-<div id="pw-screen">
-    <div class="pw-box">
-        <p style="margin-bottom:10px;">パスワードを入力</p>
-        <input type="password" id="pw-input" placeholder="****"><br>
-        <button class="ctrl-btn on" style="width:100px;" onclick="checkPw()">入室</button>
-    </div>
-</div>
-
-<div class="container section" id="main-ui">
+<div class="container">
     <div id="controller" class="section">
         <h1>操作パネル</h1>
         <div class="qr-area"><div id="qrcode" style="display:inline-block;"></div></div>
-        <p style="text-align:center; margin-bottom:10px;">接続数: <span id="count">0</span></p>
+        <p style="text-align:center; margin-bottom:10px; font-size: 14px;">参加数: <span id="count" style="font-weight:bold; color:var(--primary);">0</span></p>
         <div class="btn-grid">
             <button class="ctrl-btn on" onclick="send('on')">全点灯</button>
             <button class="ctrl-btn off" onclick="send('off')">全消灯</button>
             <button class="ctrl-btn ptn" onclick="send('strobe')">高速ストロボ</button>
-            <button class="ctrl-btn ptn" onclick="send('heart')">ハートビート</button>
-            <button class="ctrl-btn ptn" onclick="send('blink')">ゆっくり点滅</button>
-            <button class="ctrl-btn ptn" onclick="send('random')">ランダム点滅</button>
-            <button class="ctrl-btn ptn" onclick="send('sos')">SOS信号</button>
+            <button class="ctrl-btn ptn" onclick="send('heart')">鼓動</button>
+            <button class="ctrl-btn ptn" onclick="send('blink_slow')">ゆっくり点滅</button>
+            <button class="ctrl-btn ptn" onclick="send('blink_vslow')">超ゆっくり点滅</button>
+            <button class="ctrl-btn ptn" onclick="send('random')">ランダム</button>
+            <button class="ctrl-btn ptn" onclick="send('sos')">SOS</button>
         </div>
-        <button class="ctrl-btn" style="width:100%; margin-top:10px; background:#444;" onclick="location.href='?m=c'">自分も参加側になる</button>
+        <button class="ctrl-btn" style="width:100%; margin-top:15px; background:#475569;" onclick="location.href='?m=c'">参加側に切り替え</button>
     </div>
 
     <div id="client" class="section">
         <h1>ライト受信機</h1>
-        <button class="perm-btn" id="permBtn" onclick="initFlash()">【開始】ライトを接続</button>
+        <button class="perm-btn" id="permBtn" onclick="initFlash()">【ここをタップして開始】</button>
         <div id="display" class="light-display l-off">💡</div>
-        <div id="log">ログ: 待機中...</div>
-        <video id="v" autoplay playsinline></video>
+        <div id="log">ログ: 命令を待っています...</div>
     </div>
 </div>
+
+<video id="v" autoplay playsinline muted></video>
 
 <script>
 const firebaseConfig = {
@@ -90,25 +74,14 @@ const clientId = "id_" + Math.random().toString(36).substr(2, 4);
 let track = null;
 let timer = null;
 
-function checkPw() {
-    const val = document.getElementById('pw-input').value;
-    if(val === "6240") {
-        document.getElementById('pw-screen').style.display = 'none';
-        document.getElementById('main-ui').classList.add('active');
-        const p = new URLSearchParams(window.location.search);
-        setMode(p.get('m') === 'c' ? 'client' : 'controller');
-    } else {
-        alert("パスワードが違います");
-    }
-}
-
 function setMode(m) {
     document.getElementById('controller').classList.toggle('active', m === 'controller');
     document.getElementById('client').classList.toggle('active', m === 'client');
     if(m === 'controller') {
         const qr = document.getElementById('qrcode');
         qr.innerHTML = "";
-        new QRCode(qr, { text: window.location.href.split('?')[0] + "?m=c", width: 140, height: 140 });
+        // QRは必ず参加モード(?m=c)へ飛ばす
+        new QRCode(qr, { text: window.location.origin + window.location.pathname + "?m=c", width: 140, height: 140 });
         db.ref(`sessions/${sessionId}/clients`).on('value', s => {
             document.getElementById('count').innerText = s.val() ? Object.keys(s.val()).length : 0;
         });
@@ -120,11 +93,22 @@ function send(type) {
 }
 
 async function initFlash() {
-    addLog("ライト探索開始...");
+    addLog("カメラ探索中...");
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        // Galaxy Z Fold6等の多眼カメラ対策：背面の全カメラを調査
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoDevices = devices.filter(d => d.kind === 'videoinput');
+        addLog(`カメラ数: ${videoDevices.length}`);
+
+        let found = false;
+        // まずは標準の背面指定で試す
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+            video: { facingMode: 'environment' } 
+        });
         track = stream.getVideoTracks()[0];
         document.getElementById('v').srcObject = stream;
+        
+        addLog("カメラ取得成功。命令受信を開始します。");
         
         db.ref(`sessions/${sessionId}/clients/${clientId}`).set(true);
         db.ref(`sessions/${sessionId}/clients/${clientId}`).onDisconnect().remove();
@@ -134,27 +118,29 @@ async function initFlash() {
         });
 
         document.getElementById('permBtn').style.display = 'none';
-        addLog("接続成功！命令待機中...");
+        
     } catch (e) {
         addLog("エラー: " + e.message);
+        alert("カメラを許可してください");
     }
 }
 
 function exec(cmd) {
     if(timer) { clearInterval(timer); clearTimeout(timer); }
-    addLog("命令受信: " + cmd);
+    addLog("命令: " + cmd);
     
     if(cmd === 'on') setL(true);
     else if(cmd === 'off') setL(false);
-    else if(cmd === 'strobe') timer = setInterval(() => toggleL(), 50);
-    else if(cmd === 'blink') timer = setInterval(() => toggleL(), 500);
+    else if(cmd === 'strobe') timer = setInterval(() => toggleL(), 60);
+    else if(cmd === 'blink_slow') timer = setInterval(() => toggleL(), 800);
+    else if(cmd === 'blink_vslow') timer = setInterval(() => toggleL(), 2000); // 新規：超ゆっくり
     else if(cmd === 'heart') {
-        const p = [100, 150, 100, 600]; let i = 0;
+        const p = [100, 200, 100, 800]; let i = 0;
         const f = () => { toggleL(); timer = setTimeout(f, p[i++ % 4]); }; f();
     }
-    else if(cmd === 'random') timer = setInterval(() => setL(Math.random() > 0.5), Math.random() * 300 + 50);
+    else if(cmd === 'random') timer = setInterval(() => setL(Math.random() > 0.5), Math.random() * 400 + 100);
     else if(cmd === 'sos') {
-        const p = [100,100,100,100,100,300, 300,100,300,100,300,300, 100,100,100,100,100,800];
+        const p = [100,100,100,100,100,300, 400,100,400,100,400,300, 100,100,100,100,100,1000];
         let i = 0;
         const f = () => { setL(i%2===0); timer = setTimeout(f, p[i++ % p.length]); }; f();
     }
@@ -167,11 +153,20 @@ async function setL(v) {
     if(!track) return;
     document.getElementById('display').className = v ? "light-display l-on" : "light-display l-off";
     try {
-        // Galaxy対策：判定をスキップして直接流し込む
-        await track.applyConstraints({ advanced: [{ torch: v }] });
+        // Z Fold6対策：対応判定を無視して直接流し込む。
+        // また、一部のGalaxyではvideo.play()が継続していないとライトが消えるため再確認
+        const video = document.getElementById('v');
+        if (v && video.paused) video.play();
+
+        await track.applyConstraints({
+            advanced: [{ 
+                torch: v,
+                fillLightMode: v ? "torch" : "off" 
+            }]
+        });
     } catch (e) {
-        // 失敗してもログに出すだけで処理は止めない
-        console.log(e);
+        // エラーが出ても画面上は黄色くなる。ライトのみ失敗した場合のログ。
+        console.log("Torch Error:", e);
     }
 }
 
@@ -180,12 +175,10 @@ function addLog(m) {
     l.innerText = m + "\n" + l.innerText;
 }
 
-// 参加側URLで直接来た場合もパスワードを求める（セキュリティのため）
 window.onload = () => {
     const p = new URLSearchParams(window.location.search);
-    if(p.get('m') === 'c') {
-        // 参加側はパスワードなしにするなら、ここでcheckPwの中身を直接実行する
-    }
+    // URLに ?m=c があれば参加側、なければ即操作パネル
+    setMode(p.get('m') === 'c' ? 'client' : 'controller');
 };
 </script>
 </body>
