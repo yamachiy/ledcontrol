@@ -17,13 +17,14 @@
         .section.active { display: block; }
         .qr-area { text-align: center; background: white; padding: 10px; border-radius: 10px; margin-bottom: 10px; }
         .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .ctrl-btn { padding: 15px 5px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .ctrl-btn { padding: 15px 5px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; transition: 0.2s; }
+        .ctrl-btn:active { transform: scale(0.98); opacity: 0.8; }
         .on { background: #ff416c; } .off { background: #4b6cb7; } .ptn { background: #00b894; }
+        .mode-btn { width: 100%; padding: 15px; background: #475569; color: white; border: none; border-radius: 10px; margin-top: 15px; font-weight: bold; cursor: pointer; border: 1px dashed #94a3b8; }
         .perm-btn { width: 100%; padding: 25px; background: var(--accent); color: white; border: none; border-radius: 15px; font-size: 18px; font-weight: bold; cursor: pointer; }
         .light-display { width: 100%; height: 150px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 60px; margin: 15px 0; }
         .l-off { background: #334155; } .l-on { background: #f1c40f; box-shadow: 0 0 50px #f1c40f; }
         #log { font-size: 10px; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; height: 100px; overflow-y: auto; margin-top: 10px; }
-        /* ビデオは非表示だが、動作のためにDOMには残す */
         video { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
@@ -44,6 +45,7 @@
             <button class="ctrl-btn ptn" onclick="send('random')">ランダム</button>
             <button class="ctrl-btn ptn" onclick="send('sos')">SOS</button>
         </div>
+        <button class="mode-btn" onclick="location.href='?m=c'">この端末を受信機にする</button>
     </div>
 
     <div id="client" class="section">
@@ -51,6 +53,7 @@
         <button class="perm-btn" id="permBtn" onclick="initFlash()">【開始】ライトを有効化</button>
         <div id="display" class="light-display l-off">💡</div>
         <div id="log">ログ: 待機中</div>
+        <button class="mode-btn" onclick="location.href='index.html'">操作パネルに戻る</button>
     </div>
 </div>
 
@@ -79,6 +82,7 @@ function setMode(m) {
     if(m === 'controller') {
         const qr = document.getElementById('qrcode');
         qr.innerHTML = "";
+        // QRを読み取った人は必ず受信機モード(?m=c)に飛ばす
         new QRCode(qr, { text: window.location.origin + window.location.pathname + "?m=c", width: 140, height: 140 });
         db.ref(`sessions/${sessionId}/clients`).on('value', s => {
             document.getElementById('count').innerText = s.val() ? Object.keys(s.val()).length : 0;
@@ -98,6 +102,7 @@ async function initFlash() {
         
         let targetTrack = null;
 
+        // Galaxy Z Fold6 多眼カメラ対応ロジック
         for (const device of videoDevices) {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
@@ -118,7 +123,7 @@ async function initFlash() {
         }
 
         if (!targetTrack) {
-            addLog("⚠️ 対応レンズが自動で見つからないため強制接続します。");
+            addLog("⚠️ 強制接続モードで起動します。");
             const fallback = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             targetTrack = fallback.getVideoTracks()[0];
             document.getElementById('v').srcObject = fallback;
@@ -126,14 +131,13 @@ async function initFlash() {
 
         track = targetTrack;
         
-        // 許可が出たので即座にFirebaseの命令受信を開始
+        // 即座に命令の監視を開始
         startListening();
-
         document.getElementById('permBtn').style.display = 'none';
-        addLog("準備完了！操作を待っています。");
+        addLog("準備完了。命令を待っています。");
 
     } catch (e) {
-        addLog("致命的エラー: " + e.message);
+        addLog("エラー: " + e.message);
     }
 }
 
@@ -148,13 +152,13 @@ function startListening() {
 
 function exec(cmd) {
     if(timer) { clearInterval(timer); clearTimeout(timer); }
-    addLog("受信命令: " + cmd);
+    addLog("受信: " + cmd);
     
     if(cmd === 'on') setL(true);
     else if(cmd === 'off') setL(false);
     else if(cmd === 'strobe') timer = setInterval(() => toggleL(), 60);
     else if(cmd === 'blink_slow') timer = setInterval(() => toggleL(), 800);
-    else if(cmd === 'blink_ultra') timer = setInterval(() => toggleL(), 5000); // 5秒間隔
+    else if(cmd === 'blink_ultra') timer = setInterval(() => toggleL(), 5000); 
     else if(cmd === 'heart') {
         const p = [100, 200, 100, 800]; let i = 0;
         const f = () => { toggleL(); timer = setTimeout(f, p[i++ % 4]); }; f();
@@ -175,14 +179,12 @@ async function setL(v) {
     document.getElementById('display').className = v ? "light-display l-on" : "light-display l-off";
     try {
         await track.applyConstraints({ advanced: [{ torch: v }] });
-    } catch (e) {
-        console.log("Torch error", e);
-    }
+    } catch (e) {}
 }
 
 function addLog(m) {
     const l = document.getElementById('log');
-    l.innerText = m + "\n" + l.innerText;
+    if(l) l.innerText = m + "\n" + l.innerText;
 }
 
 window.onload = () => {
