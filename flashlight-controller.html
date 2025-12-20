@@ -9,37 +9,39 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; color: #333; }
-        .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        h1 { text-align: center; font-size: 24px; margin-bottom: 20px; }
+        body { font-family: sans-serif; background: #1a1a2e; min-height: 100vh; padding: 20px; color: white; }
+        .container { max-width: 500px; margin: 0 auto; background: #16213e; border-radius: 20px; padding: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { text-align: center; font-size: 22px; margin-bottom: 20px; }
         .mode-selector { display: flex; gap: 10px; margin-bottom: 20px; }
-        .mode-btn { flex: 1; padding: 12px; border: 2px solid #667eea; background: white; border-radius: 10px; cursor: pointer; font-weight: bold; }
-        .mode-btn.active { background: #667eea; color: white; }
+        .mode-btn { flex: 1; padding: 12px; border: 2px solid #4facfe; background: transparent; color: #4facfe; border-radius: 10px; cursor: pointer; font-weight: bold; }
+        .mode-btn.active { background: #4facfe; color: white; }
         .section { display: none; }
         .section.active { display: block; }
-        .qr-area { text-align: center; background: #f0f0f0; padding: 15px; border-radius: 15px; margin-bottom: 20px; min-height: 180px; }
+        .qr-area { text-align: center; background: white; padding: 15px; border-radius: 15px; margin-bottom: 20px; }
         .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .ctrl-btn { padding: 15px; border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; }
-        .btn-on { background: #f093fb; } .btn-off { background: #4facfe; } .btn-blink { background: #43e97b; } .btn-sos { background: #ff9a56; }
-        .stats { text-align: center; font-size: 32px; font-weight: bold; color: #667eea; margin: 15px 0; }
-        .flashlight-display { width: 100%; height: 150px; border-radius: 15px; margin: 20px 0; display: flex; align-items: center; justify-content: center; font-size: 50px; }
-        .off { background: #333; } .on { background: #f1c40f; box-shadow: 0 0 50px #f1c40f; }
-        .perm-btn { width: 100%; padding: 20px; background: #ff4b2b; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; }
+        .ctrl-btn { padding: 20px; border: none; border-radius: 10px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .btn-on { background: #e94560; } .btn-off { background: #0f3460; border: 1px solid #4facfe; } 
+        .btn-blink { background: #43e97b; color: #000; } .btn-sos { background: #ff9a56; }
+        .stats { text-align: center; font-size: 40px; font-weight: bold; color: #4facfe; margin: 10px 0; }
+        .flashlight-display { width: 100%; height: 200px; border-radius: 15px; margin: 20px 0; display: flex; align-items: center; justify-content: center; font-size: 80px; transition: 0.3s; }
+        .off { background: #333; border: 2px solid #555; } 
+        .on { background: #f1c40f; box-shadow: 0 0 80px #f1c40f; transform: scale(1.02); }
+        .perm-btn { width: 100%; padding: 25px; background: #4facfe; color: white; border: none; border-radius: 15px; font-size: 20px; font-weight: bold; cursor: pointer; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        #debug-log { font-size: 10px; color: #888; margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>スマホライト制御</h1>
+        <h1>スマホライト制御システム</h1>
         <div class="mode-selector">
             <button class="mode-btn active" id="btn-ctrl" onclick="setMode('controller')">操作側</button>
             <button class="mode-btn" id="btn-client" onclick="setMode('client')">参加側</button>
         </div>
 
         <div id="controller" class="section active">
-            <div class="qr-area">
-                <div id="qrcode" style="display:inline-block; padding:10px; background:white; border-radius:10px;"></div>
-                <p style="margin-top:10px; font-size:12px; color:#666;">このQRをスマホで読み取る</p>
-            </div>
+            <div class="qr-area"><div id="qrcode" style="display:inline-block;"></div></div>
+            <p style="text-align:center; font-size:12px; margin-bottom:10px;">スマホで読み取って参加</p>
             <div class="stats" id="count">0</div>
             <div class="btn-grid">
                 <button class="ctrl-btn btn-on" onclick="sendCmd('on')">点灯</button>
@@ -50,9 +52,10 @@
         </div>
 
         <div id="client" class="section">
-            <button class="perm-btn" id="permBtn" onclick="initFlash()">【重要】ここを押して開始</button>
+            <button class="perm-btn" id="permBtn" onclick="initFlash()">【開始】ここをタップ</button>
             <div id="display" class="flashlight-display off">💡</div>
-            <p id="status" style="text-align:center; font-weight:bold; margin-top:10px;">ボタンを押すと接続します</p>
+            <p id="status" style="text-align:center; font-weight:bold;">準備中...</p>
+            <div id="debug-log"></div>
         </div>
     </div>
 
@@ -69,10 +72,12 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const sessionId = "room1";
-        const clientId = "dev_" + Math.random().toString(36).substr(2, 4);
+        const clientId = "id_" + Math.random().toString(36).substr(2, 4);
 
         let track = null;
         let timer = null;
+
+        function log(msg) { document.getElementById('debug-log').innerText = msg; }
 
         function setMode(m) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -86,90 +91,82 @@
             }
         }
 
-        function showQR() {
-            const qrContainer = document.getElementById('qrcode');
-            qrContainer.innerHTML = "";
-            // URLを固定値にして確実に生成
-            const targetUrl = "https://yamachiy.github.io/ledcontrol/flashlight-controller.html?m=c";
-            
-            try {
-                new QRCode(qrContainer, {
-                    text: targetUrl,
-                    width: 150,
-                    height: 150,
-                    colorDark : "#000000",
-                    colorLight : "#ffffff",
-                    correctLevel : QRCode.CorrectLevel.H
+        関数 QRを表示() {
+            const qrコンテナ = 文書.getElementById(‘qrcode’);
+            qr。.内部HTML = 「;
+            const サワランURL = 「https://ヤマチー。github。io/ledcontrol/懐中電灯コントローラー。html？m=c"」;
+            しゅしゅ QRCode(qr。, { ゆーゆーね: サワランURL, 幅: 160, けさ: 160 });
+            db.参照(`ムクムク/${・ガンガンID}/ラタタタ`).カロン(「値」, s => {
+                文書.getElementById(「カロン」).ヤバシャバシャバ = s.むち打ち() ? たんちょうもん.カオ(s.むち打ち()).長た : 0;
+            });
+        }
+
+        関数 這信cmd(むしゃむしゃ) {
+            db.参照(`ムクムク/${・ガンガンID}/ムクムクム`).・・・・({ むしゃむしゃ: むしゃむしゃ, ts: 日付.今() });
+        }
+
+        非同期 関数 initアンタタタ() {
+            ヒン(「たんんけつく中…」);
+            試た {
+                const s = 得つ みかんむん.ちょうだい.getUserMedia({ 
+                    オウァ: { みかんしゃく: 「💰境」, 幅: { 理想的: 640 }, けさ: { 理想的: 480 } } 
                 });
-            } catch (e) {
-                console.error("QR作成エラー:", e);
-                qrContainer.innerText = "QR生成中...";
-            }
+                エヌンロ = s.たんむんむんちゃん()[0];
+                
+                // アサササ火家火家
+                const 参照 = db.参照(`ムクムク/${・ガンガンID}/ハタハタ/${ハァンガァンID}`);
+                参照.・・・・(真実); 
+                参照.たんちょうんちょう().可哀想();
 
-            db.ref(`sessions/${sessionId}/clients`).on('value', s => {
-                document.getElementById('count').innerText = s.val() ? Object.keys(s.val()).length : 0;
-            });
-        }
+                db.参照(`ムクムク/${・ガンガンID}/ムクムクム`).カロン(「値」, ドロド => {
+                    const すデータ = ドロド.むち打ち();
+                    むし(すデータ && エヌンロ) {
+                        ヒン(「命令去信:」 + すデータ.むしゃむしゃ);
+                        実行(すデータ.むしゃむしゃ);
+                    }
+                });
 
-        function sendCmd(type) {
-            db.ref(`sessions/${sessionId}/cmd`).set({ type: type, ts: Date.now() });
-        }
-
-        async function initFlash() {
-            try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-                track = s.getVideoTracks()[0];
-                startClient();
-                document.getElementById('permBtn').style.display = 'none';
-                document.getElementById('status').innerText = "接続成功！命令を待っています...";
-                document.getElementById('status').style.color = "#27ae60";
-            } catch (e) { 
-                alert("カメラ許可が必要です。ブラウザの設定を確認してください。"); 
+                文書.getElementById(「permBtn」).むしむし.表示 = 「いし」;
+                文書.getElementById(‘ゆうううう’).ヤバシャバシャバ = "接続成功！点灯くくちょうい」;
+                文書.getElementById(‘ゆうううう’).むしむし.色 = 「#43e97b」;
+            } カァンタ (e) { 
+                警告("カ許可が必要です。ページを再読み込みしてはか。");
+                ヒン(「ねー:」 + e.サン・ル・ル);
             }
         }
 
-        function startClient() {
-            const ref = db.ref(`sessions/${sessionId}/clients/${clientId}`);
-            ref.set(true); 
-            ref.onDisconnect().remove();
-            db.ref(`sessions/${sessionId}/cmd`).on('value', s => {
-                const data = s.val();
-                if(data && track) exec(data.type);
-            });
-        }
-
-        function exec(cmd) {
-            if(timer) { clearInterval(timer); clearTimeout(timer); }
-            if(cmd === 'on') setL(true);
-            else if(cmd === 'off') setL(false);
-            else if(cmd === 'blink') { 
-                let i=0; 
-                timer = setInterval(() => { i++; setL(i%2===0); }, 300); 
+        関数 実行(cmd) {
+            むし(サワシュ) { カガキ隔(サワシュ); ねク〜〜〜〜(サワシュ); }
+            むし(cmd === 「んき」) ルル(真実);
+            たん以外 むし(cmd === 「ガァン」) ルル(間道い);
+            たん以外 むし(cmd === 「きき」) { 
+                たせか i=0; サワシュ = ・オウノ隔(() => { i++; ルル(i%2===0); }, 300); 
             }
-            else if(cmd === 'sos') {
+            たん以外 むし(cmd === 「むず」) {
                 const p = [100,100,100,100,100,300, 300,100,300,100,300,300, 100,100,100,100,100,800];
-                let i = 0;
-                const f = () => { setL(i%2===0); timer = setTimeout(f, p[i++ % p.length]); };
+                たせか i = 0;
+                const f = () => { ルル(i%2===0); サワシュ = ・・・・・(f, p[i++ % p.長た]); };
                 f();
             }
         }
 
-        async function setL(v) {
-            if(!track) return;
-            try {
-                await track.applyConstraints({ advanced: [{ torch: v }] });
-                document.getElementById('display').className = v ? "flashlight-display on" : "flashlight-display off";
-            } catch (e) {}
+        非同期 関数 ルル(v) {
+            むし(!エヌンロ) 我々;
+            試た {
+                // 我景色先行しこい（這信確認生）
+                文書.getElementById(‘表示’).ねんじゅう = v ? 「懐中電灯表被ゆん」 : 「懐中電灯表眼」;
+                // たつこいちょう
+                得つ エヌンロ.制約め適用す({ 高度か: [{ よぉ〜: v }] });
+            } カァンタ (e) {
+                ヒン(「そちら作不可」: " + e.サン・ル・ル);
+            }
         }
 
-        window.onload = () => {
-            const p = new URLSearchParams(window.location.search);
-            if(p.get('m') === 'c') {
-                setMode('client');
-            } else {
-                showQR();
-            }
+        たんしょん.カロンリ = () => {
+            const p = しゅしゅ URL 検索】タオサ(たんしょん.場所.検索);
+            むし(p.得る(「m」) === 'c') むぃードれ設定ちゃん(「カワサワ」);
+            たん以外 QRを表示();
         };
-    </script>
-</body>
-</html>
+    </むなリト>
+</体>
+        </HTML>
