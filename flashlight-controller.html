@@ -23,7 +23,8 @@
         .light-display { width: 100%; height: 150px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 60px; margin: 15px 0; }
         .l-off { background: #334155; } .l-on { background: #f1c40f; box-shadow: 0 0 50px #f1c40f; }
         #log { font-size: 10px; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; height: 100px; overflow-y: auto; margin-top: 10px; }
-        video { position: fixed; bottom: 10px; right: 10px; width: 80px; height: 60px; border: 2px solid white; border-radius: 5px; z-index: 1000; background: black; }
+        /* ビデオは非表示だが、動作のためにDOMには残す */
+        video { position: fixed; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -38,7 +39,7 @@
             <button class="ctrl-btn off" onclick="send('off')">全消灯</button>
             <button class="ctrl-btn ptn" onclick="send('strobe')">高速点滅</button>
             <button class="ctrl-btn ptn" onclick="send('blink_slow')">ゆっくり点滅</button>
-            <button class="ctrl-btn ptn" onclick="send('blink_ultra')">超・ゆっくり</button>
+            <button class="ctrl-btn ptn" onclick="send('blink_ultra')">超・ゆっくり(5s)</button>
             <button class="ctrl-btn ptn" onclick="send('heart')">鼓動</button>
             <button class="ctrl-btn ptn" onclick="send('random')">ランダム</button>
             <button class="ctrl-btn ptn" onclick="send('sos')">SOS</button>
@@ -90,16 +91,14 @@ function send(type) {
 }
 
 async function initFlash() {
-    addLog("Galaxy多機能カメラ スキャン開始...");
+    addLog("カメラをスキャンしています...");
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(d => d.kind === 'videoinput');
         
         let targetTrack = null;
 
-        // 全ての背面カメラを順番に試す
         for (const device of videoDevices) {
-            addLog(`テスト中: ${device.label || 'Camera'}`);
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { deviceId: { exact: device.deviceId } }
@@ -107,36 +106,44 @@ async function initFlash() {
                 const testTrack = stream.getVideoTracks()[0];
                 const caps = testTrack.getCapabilities();
 
-                // ライト(torch)が使えるカメラが見つかったら決定
                 if (caps.torch) {
                     addLog("✅ ライト対応レンズを発見！");
                     targetTrack = testTrack;
                     document.getElementById('v').srcObject = stream;
                     break;
                 } else {
-                    testTrack.stop(); // 使えないレンズは止める
+                    testTrack.stop();
                 }
             } catch (err) { continue; }
         }
 
         if (!targetTrack) {
-            addLog("⚠️ ライト対応レンズが自動で見つかりません。標準カメラで強制実行します。");
+            addLog("⚠️ 対応レンズが自動で見つからないため強制接続します。");
             const fallback = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             targetTrack = fallback.getVideoTracks()[0];
             document.getElementById('v').srcObject = fallback;
         }
 
         track = targetTrack;
-        db.ref(`sessions/${sessionId}/clients/${clientId}`).set(true);
-        db.ref(`sessions/${sessionId}/clients/${clientId}`).onDisconnect().remove();
-        db.ref(`sessions/${sessionId}/cmd`).on('value', snap => {
-            if(snap.val()) exec(snap.val().type);
-        });
+        
+        // 許可が出たので即座にFirebaseの命令受信を開始
+        startListening();
+
         document.getElementById('permBtn').style.display = 'none';
+        addLog("準備完了！操作を待っています。");
 
     } catch (e) {
         addLog("致命的エラー: " + e.message);
     }
+}
+
+function startListening() {
+    db.ref(`sessions/${sessionId}/clients/${clientId}`).set(true);
+    db.ref(`sessions/${sessionId}/clients/${clientId}`).onDisconnect().remove();
+    db.ref(`sessions/${sessionId}/cmd`).on('value', snap => {
+        const data = snap.val();
+        if(data) exec(data.type);
+    });
 }
 
 function exec(cmd) {
@@ -147,7 +154,7 @@ function exec(cmd) {
     else if(cmd === 'off') setL(false);
     else if(cmd === 'strobe') timer = setInterval(() => toggleL(), 60);
     else if(cmd === 'blink_slow') timer = setInterval(() => toggleL(), 800);
-    else if(cmd === 'blink_ultra') timer = setInterval(() => toggleL(), 3000); // 3秒間隔
+    else if(cmd === 'blink_ultra') timer = setInterval(() => toggleL(), 5000); // 5秒間隔
     else if(cmd === 'heart') {
         const p = [100, 200, 100, 800]; let i = 0;
         const f = () => { toggleL(); timer = setTimeout(f, p[i++ % 4]); }; f();
